@@ -45,6 +45,18 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <RF24.h>
+#if defined(ARDUINO_ARCH_ESP32)
+#if __has_include("esp32-hal-ledc.h")
+#include "esp32-hal-ledc.h"
+#endif
+#include <esp_wifi.h>
+#if __has_include("esp32-hal-bt.h")
+#include "esp32-hal-bt.h"
+#endif
+#if __has_include("esp_bt.h")
+#include <esp_bt.h>
+#endif
+#endif
 
 // ---- Опции проекта ----
 #define NODE_ID 0              // на втором устройстве поставить 1
@@ -103,6 +115,22 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
 bool pttPressed() { return digitalRead(PIN_PTT) == LOW; }
 
+void disableBuiltinRadios() {
+#if defined(ARDUINO_ARCH_ESP32)
+  // Если какой-то код успел поднять Wi-Fi, корректно гасим стек.
+  esp_wifi_stop();
+  esp_wifi_deinit();
+
+  // В Arduino-ядре для ESP32 это самый совместимый способ остановить BT.
+#if __has_include("esp32-hal-bt.h")
+  btStop();
+#endif
+#if __has_include("esp_bt.h")
+  esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
+#endif
+#endif
+}
+
 void rxPush(uint8_t v) {
   if (rxCount >= RX_BUF_SIZE) return;
   rxBuf[rxHead] = v;
@@ -124,7 +152,7 @@ void audioPlaybackTick() {
     nextPlayUs += SAMPLE_PERIOD_US;
     uint8_t s = 128;  // silence midpoint
     rxPop(s);
-    ledcWrite(0, s);
+    ledcWrite(PIN_SPK, s);
     now = micros();
   }
 }
@@ -232,6 +260,7 @@ void drawUI() {
 
 void setup() {
   Serial.begin(115200);
+  disableBuiltinRadios();
 
   pinMode(PIN_PTT, INPUT_PULLUP);
   pinMode(PIN_MIC, INPUT);
@@ -239,9 +268,8 @@ void setup() {
   analogReadResolution(12);
 
   // PWM audio out: 8-bit @ 160kHz carrier
-  ledcSetup(0, 160000, 8);
-  ledcAttachPin(PIN_SPK, 0);
-  ledcWrite(0, 128);
+  ledcAttach(PIN_SPK, 160000, 8);
+  ledcWrite(PIN_SPK, 128);
 
   SPI.begin(PIN_NRF_SCK, PIN_NRF_MISO, PIN_NRF_MOSI, PIN_NRF_CSN);
 
