@@ -18,7 +18,7 @@
 #define WALKIE_APP_NAME "NRF Walkie"
 #define WALKIE_ADC_CHANNEL FuriHalAdcChannel4
 #define WALKIE_RADIO_CHANNEL 90u
-#define WALKIE_UI_QUEUE_LEN 8u
+#define WALKIE_UI_QUEUE_LEN 16u
 
 typedef struct {
     uint8_t data[WALKIE_RX_BUF_SIZE];
@@ -142,8 +142,23 @@ static void walkie_draw_callback(Canvas* canvas, void* context) {
 
 static void walkie_input_callback(InputEvent* event, void* context) {
     WalkieApp* app = context;
-    if(event->type == InputTypePress || event->type == InputTypeRelease || event->type == InputTypeShort ||
-       event->type == InputTypeLong || event->type == InputTypeRepeat) {
+
+    if(event->key == InputKeyOk) {
+        if(event->type == InputTypePress) {
+            walkie_lock(app);
+            app->ptt_pressed = true;
+            walkie_unlock(app);
+            view_port_update(app->view_port);
+        } else if(event->type == InputTypeRelease) {
+            walkie_lock(app);
+            app->ptt_pressed = false;
+            walkie_unlock(app);
+            view_port_update(app->view_port);
+        }
+        return;
+    }
+
+    if(event->type == InputTypeShort) {
         (void)furi_message_queue_put(app->input_queue, event, 0);
     }
 }
@@ -347,6 +362,8 @@ static int32_t walkie_radio_worker(void* context) {
             }
             walkie_rx_audio_step(app, &radio, &ring, active_node_id);
         }
+
+        furi_thread_yield();
     }
 
 cleanup:
@@ -369,6 +386,7 @@ static WalkieApp* walkie_app_alloc(void) {
     app->input_queue = furi_message_queue_alloc(WALKIE_UI_QUEUE_LEN, sizeof(InputEvent));
     app->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
     app->radio_thread = furi_thread_alloc_ex("WalkieRadio", 4096, walkie_radio_worker, app);
+    furi_thread_set_priority(app->radio_thread, FuriThreadPriorityLow);
     app->running = true;
     app->node_id = 0u;
     app->config_dirty = true;
@@ -400,7 +418,7 @@ int32_t flipper_walkie_app(void* p) {
 
     while(true) {
         InputEvent event;
-        if(furi_message_queue_get(app->input_queue, &event, 100) == FuriStatusOk) {
+        if(furi_message_queue_get(app->input_queue, &event, 20) == FuriStatusOk) {
             if(event.key == InputKeyBack && event.type == InputTypeShort) {
                 walkie_lock(app);
                 app->running = false;
@@ -408,18 +426,7 @@ int32_t flipper_walkie_app(void* p) {
                 break;
             }
 
-            if(event.key == InputKeyOk) {
-                if(event.type == InputTypePress || event.type == InputTypeLong ||
-                   event.type == InputTypeRepeat) {
-                    walkie_lock(app);
-                    app->ptt_pressed = true;
-                    walkie_unlock(app);
-                } else if(event.type == InputTypeRelease) {
-                    walkie_lock(app);
-                    app->ptt_pressed = false;
-                    walkie_unlock(app);
-                }
-            } else if(event.type == InputTypeShort && event.key == InputKeyLeft) {
+            if(event.type == InputTypeShort && event.key == InputKeyLeft) {
                 walkie_lock(app);
                 app->node_id = (uint8_t)(app->node_id ? 0u : 1u);
                 app->config_dirty = true;

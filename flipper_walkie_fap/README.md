@@ -119,6 +119,73 @@ The app currently draws:
 
 This folder is meant to live inside a Flipper firmware repo as an external app.
 
+## Build On Unleashed Firmware
+
+This flow was verified as a practical way to build the app for `Unleashed`.
+
+### 1. Clone Unleashed Firmware
+
+```sh
+git clone --recursive https://github.com/DarkFlippers/unleashed-firmware.git
+cd unleashed-firmware
+```
+
+If you already cloned it without `--recursive`, run:
+
+```sh
+git submodule update --init --recursive
+```
+
+### 2. Copy This App Into `applications_user`
+
+Copy this project folder:
+
+`/Users/georgygordeev/Git/private/nrfwalkitalkie/flipper_walkie_fap`
+
+into:
+
+`unleashed-firmware/applications_user/flipper_walkie_fap`
+
+### 3. Build The App
+
+From the root of `unleashed-firmware`:
+
+```sh
+./fbt build APPSRC=applications_user/flipper_walkie_fap
+```
+
+Or by app id:
+
+```sh
+./fbt fap_flipper_walkie
+```
+
+### 4. Launch Directly On Flipper
+
+If the Flipper is connected over USB:
+
+```sh
+./fbt launch APPSRC=applications_user/flipper_walkie_fap
+```
+
+For `Unleashed`, this variant is also often useful:
+
+```sh
+./fbt COMPACT=1 DEBUG=0 launch_app APPSRC=applications_user/flipper_walkie_fap
+```
+
+### 5. Where The Built `.fap` Usually Appears
+
+Usually the built file ends up somewhere under `build/...` or `dist/...` inside the `unleashed-firmware` tree.
+
+If you want a more convenient packaged output, run:
+
+```sh
+./fbt fap_dist
+```
+
+Then the built `fap` files are usually easier to find in `dist`.
+
 ### Option A: Copy The Folder
 
 Copy `flipper_walkie_fap` into your Flipper firmware checkout:
