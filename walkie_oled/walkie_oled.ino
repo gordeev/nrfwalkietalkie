@@ -1,5 +1,5 @@
 /*
---------------------------------
+  --------------------------------
   A0 = D0 = GPIO1 -> микрофон
   D1 = GPIO2 -> CSN nRF24
   D2 = GPIO3 -> CE nRF24
@@ -8,7 +8,7 @@
   D8 = GPIO7 -> SCK
   D9 = GPIO8 -> MISO
   D10 = GPIO9 -> MOSI
---------------------------------
+  --------------------------------
 
   NRF Walkie-Talkie (PTT) with optional OLED
   for XIAO ESP32-C3 / XIAO ESP32-S3
